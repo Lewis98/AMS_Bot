@@ -13,7 +13,10 @@ async def on_ready():
     )
     print("I am online")
 
+
 @client.command()
 async def ping(ctx):
     await ctx.send(f"Pong!")
-    
+
+
+client.run(token)
