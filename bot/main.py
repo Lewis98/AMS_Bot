@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import re # Regex
+import hashlib
 
 client = commands.Bot(command_prefix=".")
 token = os.getenv("bot_token")
@@ -28,6 +29,7 @@ async def checkme(ctx, *args):
 
     user = ctx.message.author
     role = discord.utils.get(user.guild.roles, name="Paid Member")
+    role_pend = discord.utils.get(user.guild.roles, name="Pending")
 
     if role in user.roles:
         await ctx.send(f"{user.display_name} is already a paid member!")
@@ -43,15 +45,73 @@ async def checkme(ctx, *args):
     else:
 
         await ctx.send(f"Checking '{arg}' for '{str(user.display_name)}'!")
-        await ctx.send(arg)
 
         # validateID(arg)
 
         valid = True
 
-        if valid:
-            await ctx.send(f"{user.display_name} has paid!")
+        if valid:            
+            # Hash user and student ID
+            hash_user = hashlib.sha256(str(user).encode())
+            hash_id = hashlib.sha256(str(arg).encode())
+            hash_user = str(hash_user.hexdigest())
+            hash_id = str(hash_id.hexdigest())
+
+            # Check members.txt for existing data
+            f = open("members.txt", "r")
+            lines = f.readlines()
+            f.close()
+            for l in lines:
+                if re.search(f"^{hash_user} - *", l):
+                    await ctx.send(f"{user.display_name} is already a paid member.")
+                    return
+                
+                if re.search(f"- {hash_id}$", l):
+                    await ctx.send(f"{arg} has already been used!")
+                    return
+                
+
+
+            # Open members.txt and append new hashes
+            f = open("members.txt", "a")
+            f.write(hash_user + " - " + hash_id + "\n")
+            f.close()
+
             await discord.Member.add_roles(user, role)
+            await discord.Member.remove_roles(user, role_pend)
+
+            await ctx.send(f"{user.display_name} has paid!")
+
+
+@client.command()
+async def uncheckme(ctx, *args):
+
+    user = ctx.message.author
+    hash_user = hashlib.sha256(str(user).encode())
+    hash_user = str(hash_user.hexdigest())
+
+    role = discord.utils.get(user.guild.roles, name="Paid Member")
+    role_pend = discord.utils.get(user.guild.roles, name="Pending")
+
+    f = open("members.txt", "r")
+    lines = f.readlines()
+    f.close()
+
+    f = open("members.txt", "w")
+    m_found = False
+    for l in lines:
+        if re.search(f"^{hash_user} - *", l):
+            await ctx.send(f"{user.display_name} removed from list of paid members")
+            await discord.Member.add_roles(user, role_pend)
+            await discord.Member.remove_roles(user, role)
+        else:
+            f.write(l)
+
+                
+
+
+
+
 
 
 client.run(token)
