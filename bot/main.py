@@ -91,6 +91,7 @@ async def checkme(ctx, *args):
             for l in lines:
                 if not re.search(f"^{hash_id}$", l):
                     f.write(l)
+            f.close()
 
             # Add role to user and remove pending
             await discord.Member.add_roles(user, role)
@@ -124,6 +125,7 @@ async def uncheckme(ctx, *args):
             await discord.Member.remove_roles(user, role)
         else:
             f.write(l)
+    f.close()
 
 
 @client.command()
@@ -166,7 +168,36 @@ async def addID(ctx, *args):
             f.write(hash_id + "\n")
             f.close()
             await ctx.send(f"{arg} added!")
-            
+
+
+@client.command()
+async def dumpLogs(ctx):
+
+    user = ctx.message.author
+    role = discord.utils.get(user.guild.roles, name="Committee")
+    if not (role in user.roles):
+        await ctx.send(f"Only Committee members can dump log files")
+        return
+    
+    f = open("members.txt", "r")
+    m_lines = f.readlines()
+    f.close()
+
+    f = open("IDs.txt", "r")
+    i_lines = f.readlines()
+    f.close()
+
+    print("Members List:")
+    for l in m_lines:
+        print(l)
+    print("")
+    print("")
+    print("ID List:")
+    for l in i_lines:
+        print(l)
+    
+    await ctx.send(f"Logs successfully dumped to console")
+
 
 
 client.run(token)
