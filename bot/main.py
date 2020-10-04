@@ -46,41 +46,59 @@ async def checkme(ctx, *args):
 
         await ctx.send(f"Checking '{arg}' for '{str(user.display_name)}'!")
 
-        # validateID(arg)
 
-        valid = True
+        # Hash user and student ID
+        hash_user = hashlib.sha256(str(user).encode())
+        hash_id = hashlib.sha256(str(arg).encode())
+        hash_user = str(hash_user.hexdigest())
+        hash_id = str(hash_id.hexdigest())
 
-        if valid:            
-            # Hash user and student ID
-            hash_user = hashlib.sha256(str(user).encode())
-            hash_id = hashlib.sha256(str(arg).encode())
-            hash_user = str(hash_user.hexdigest())
-            hash_id = str(hash_id.hexdigest())
+        # Check members.txt for existing data
+        f = open("members.txt", "r")
+        lines = f.readlines()
+        f.close()
+        for l in lines:
+            if re.search(f"^{hash_user} - *", l):
+                await ctx.send(f"{user.display_name} is already a paid member.")
+                return
+            
+            if re.search(f"- {hash_id}$", l):
+                await ctx.send(f"{arg} has already been used!")
+                return
+        
+        # validate
+        f = open("IDs.txt", "r")
+        IDlist = f.readlines()
+        f.close()
 
-            # Check members.txt for existing data
-            f = open("members.txt", "r")
-            lines = f.readlines()
-            f.close()
-            for l in lines:
-                if re.search(f"^{hash_user} - *", l):
-                    await ctx.send(f"{user.display_name} is already a paid member.")
-                    return
+        valid = False
+        for uid in IDlist:
+            if re.search(f"^{hash_id}$", uid):
+                valid = True
                 
-                if re.search(f"- {hash_id}$", l):
-                    await ctx.send(f"{arg} has already been used!")
-                    return
-                
-
-
+        if valid:
             # Open members.txt and append new hashes
             f = open("members.txt", "a")
             f.write(hash_user + " - " + hash_id + "\n")
             f.close()
 
+            # Remove ID from list of available
+            f = open("IDs.txt", "r")
+            lines = f.readlines()
+            f.close()
+
+            f = open("IDs.txt", "w")
+            for l in lines:
+                if not re.search(f"^{hash_id}$", l):
+                    f.write(l)
+
+            # Add role to user and remove pending
             await discord.Member.add_roles(user, role)
             await discord.Member.remove_roles(user, role_pend)
 
             await ctx.send(f"{user.display_name} has paid!")
+        else:
+            await ctx.send(f"{arg} is invalid.")
 
 
 @client.command()
@@ -107,11 +125,48 @@ async def uncheckme(ctx, *args):
         else:
             f.write(l)
 
-                
 
+@client.command()
+async def addID(ctx, *args):
+    
+    user = ctx.message.author
+    role = discord.utils.get(user.guild.roles, name="Committee")
+    if not (role in user.roles):
+        await ctx.send(f"Only Committee members can add ID's")
+        return
 
+    f = open("members.txt", "r")
+    membersList = f.readlines()
+    f.close()
 
+    f = open("IDs.txt", "r")
+    IDlist = f.readlines()
+    f.close()
+    
+    for arg in args:
+        hash_id = hashlib.sha256(str(arg).encode())
+        hash_id = str(hash_id.hexdigest())
 
+        inUse = False
+        for m in membersList:
+            if re.search(f"- {hash_id}$", m):
+                inUse = True
+                await ctx.send(f"{arg} is claimed already")
+                break
+
+        exists = False
+        for uid in IDlist:
+            if re.search(f"^{hash_id}$", uid):
+                exists = True
+                await ctx.send(f"{arg} already in list")
+                break
+        
+        if (not inUse) and (not exists):
+            f = open("IDs.txt", "a")
+            f.write(hash_id + "\n")
+            f.close()
+            await ctx.send(f"{arg} added!")
+            
 
 
 client.run(token)
