@@ -129,6 +129,37 @@ async def uncheckme(ctx, *args):
 
 
 @client.command()
+async def uncheck(ctx, *args):
+
+    user = ctx.message.author
+    role = discord.utils.get(user.guild.roles, name="Committee")
+    if not (role in user.roles):
+        await ctx.send(f"Only Committee members can add ID's")
+        return
+
+    user = bot.get_user(args[0])
+    hash_user = hashlib.sha256(str(user).encode())
+    hash_user = str(hash_user.hexdigest())
+
+    role = discord.utils.get(user.guild.roles, name="Paid Member")
+    role_pend = discord.utils.get(user.guild.roles, name="Pending")
+
+    f = open("members.txt", "r")
+    lines = f.readlines()
+    f.close()
+
+    f = open("members.txt", "w")
+    m_found = False
+    for l in lines:
+        if re.search(f"^{hash_user} - *", l):
+            await ctx.send(f"{user.display_name} removed from list of paid members")
+            await discord.Member.add_roles(user, role_pend)
+            await discord.Member.remove_roles(user, role)
+        else:
+            f.write(l)
+    f.close()
+
+@client.command()
 async def addID(ctx, *args):
     
     user = ctx.message.author
@@ -149,25 +180,31 @@ async def addID(ctx, *args):
         hash_id = hashlib.sha256(str(arg).encode())
         hash_id = str(hash_id.hexdigest())
 
+        idClaimed = 0
+        idExists = 0
+        idAdded = 0
+
         inUse = False
         for m in membersList:
             if re.search(f"- {hash_id}$", m):
                 inUse = True
-                await ctx.send(f"{arg} is claimed already")
+                idClaimed += 1
                 break
 
         exists = False
         for uid in IDlist:
             if re.search(f"^{hash_id}$", uid):
                 exists = True
-                await ctx.send(f"{arg} already in list")
+                idExists += 1
                 break
         
         if (not inUse) and (not exists):
             f = open("IDs.txt", "a")
             f.write(hash_id + "\n")
             f.close()
-            await ctx.send(f"{arg} added!")
+            idAdded += 1
+        
+    await ctx.send(f"{str(idAdded)} ID's added ({idClaimed} already claimed, {idExists} already exist)")
 
 
 @client.command()
