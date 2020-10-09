@@ -4,7 +4,7 @@ import os
 import re # Regex
 import hashlib
 
-client = commands.Bot(command_prefix=".")
+client = commands.Bot(command_prefix=":")
 token = os.getenv("bot_token")
 
 @client.event
@@ -37,7 +37,7 @@ async def checkme(ctx, *args):
 
     arg = args[0]
 
-    if not re.search('^[0-9]{7,8}$', arg):
+    if not re.search('^[0-9]{7,30}$', arg):
         
         await ctx.send(f"{str(arg)} is not a valid Student ID")
         return
@@ -176,6 +176,8 @@ async def addID(ctx, *args):
     IDlist = f.readlines()
     f.close()
     
+    fin = False
+    i = 0
     for arg in args:
         hash_id = hashlib.sha256(str(arg).encode())
         hash_id = str(hash_id.hexdigest())
@@ -188,23 +190,22 @@ async def addID(ctx, *args):
         for m in membersList:
             if re.search(f"- {hash_id}$", m):
                 inUse = True
-                idClaimed += 1
+                await ctx.send(f"'{arg}' is already in use")
                 break
 
         exists = False
         for uid in IDlist:
             if re.search(f"^{hash_id}$", uid):
                 exists = True
-                idExists += 1
+                await ctx.send(f"'{arg}' already exists'")
                 break
         
         if (not inUse) and (not exists):
             f = open("IDs.txt", "a")
             f.write(hash_id + "\n")
             f.close()
-            idAdded += 1
-        
-    await ctx.send(f"{str(idAdded)} ID's added ({idClaimed} already claimed, {idExists} already exist)")
+            await ctx.send(f"'{arg}' added!")
+
 
 
 @client.command()
@@ -227,7 +228,6 @@ async def dumpLogs(ctx):
     print("Members List:")
     for l in m_lines:
         print(l)
-    print("")
     print("")
     print("ID List:")
     for l in i_lines:
