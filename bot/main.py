@@ -4,7 +4,7 @@ import os
 import re # Regex
 import hashlib
 
-client = commands.Bot(command_prefix=":")
+client = commands.Bot(command_prefix=".")
 token = os.getenv("bot_token")
 
 @client.event
